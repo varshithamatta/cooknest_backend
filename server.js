@@ -6,10 +6,11 @@ const sequelize = require("./config/database");
 const swaggerDocs = require("./swaggerConfig");
 
 // Import Routes
+const authRoutes = require("./routes/authRoutes");   // ✅ Added Authentication Routes
 const recipeRoutes = require("./routes/recipeRoutes");
 const chefRoutes = require("./routes/chefRoutes");
-const userRoutes = require("./routes/userRoutes"); // ✅ Added User Routes
-const likeRoutes = require("./routes/likeRoutes"); // ✅ Added Liked Recipes Routes
+const userRoutes = require("./routes/userRoutes");
+const likeRoutes = require("./routes/likeRoutes");
 
 const app = express();
 
@@ -18,16 +19,26 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // API Routes
+app.use("/api/auth", authRoutes);    // ✅ Added Authentication Routes
 app.use("/api/recipes", recipeRoutes);
 app.use("/api/chefs", chefRoutes);
-app.use("/api/users", userRoutes);    // ✅ Added User Routes
-app.use("/api/likes", likeRoutes);    // ✅ Added Liked Recipes Routes
+app.use("/api/users", userRoutes);
+app.use("/api/likes", likeRoutes);
+
+// ✅ Simple Health Check Route
+app.get("/api/health", (req, res) => {
+    res.status(200).json({ status: "API is running fine!" });
+});
 
 // Initialize Swagger
 swaggerDocs(app);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-sequelize.sync().then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-});
+sequelize.sync()
+    .then(() => {
+        app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+    })
+    .catch((err) => {
+        console.error("❌ Database connection failed:", err);
+    });

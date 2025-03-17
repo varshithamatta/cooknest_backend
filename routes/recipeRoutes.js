@@ -3,6 +3,9 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const Recipe = require("../models/Recipe");
 const Chef = require("../models/Chef");
+const { searchRecipes } = require("../controllers/recipeController");
+const validate = require("../middleware/validate");
+const { recipeSchema } = require("../validators/schemas");
 
 /**
  * @swagger
@@ -57,27 +60,16 @@ const Chef = require("../models/Chef");
  *       201:
  *         description: Recipe created successfully.
  */
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, validate(recipeSchema), async (req, res) => {
     try {
-        const chefId = req.chef.chefId; // Get chef ID from JWT token
-        const { recipe_name, image, category, cuisine_type, rating, time, type, description, ingredients, instructions } = req.body;
-
+        const chefId = req.user.chefId; // 🔄 Fix authMiddleware handling
         const chef = await Chef.findByPk(chefId);
         if (!chef) return res.status(404).json({ error: "Chef not found" });
 
         const recipe = await Recipe.create({
             chef_id: chefId,
-            recipe_name,
-            image,
-            category,
-            cuisine_type,
-            rating,
-            time,
-            type,
-            description,
-            ingredients,
-            instructions,
-            chefName: chef.name, // Automatically add chef name
+            ...req.body,
+            chefName: chef.name // Automatically add chef name
         });
 
         res.status(201).json({ message: "Recipe created successfully", recipe });
@@ -85,6 +77,7 @@ router.post("/", authMiddleware, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 /**
  * @swagger
@@ -98,10 +91,18 @@ router.post("/", authMiddleware, async (req, res) => {
  */
 router.get("/", async (req, res) => {
     try {
+        let { page = 1, limit = 10 } = req.query;
+        page = parseInt(page);
+        limit = parseInt(limit);
+        const offset = (page - 1) * limit;
+
         const recipes = await Recipe.findAll({
-            include: { model: Chef, attributes: ["name", "bio", "profile_image"] } // Join with Chef details
+            include: { model: Chef, attributes: ["name", "bio", "profile_image"] },
+            limit,
+            offset
         });
-        res.json(recipes);
+
+        res.json({ page, limit, recipes });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -173,9 +174,9 @@ router.get("/:id", async (req, res) => {
  *       404:
  *         description: Recipe not found or Unauthorized.
  */
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, validate(recipeSchema), async (req, res) => {
     try {
-        const chefId = req.chef.chefId;
+        const chefId = req.user.chefId;
         const recipe = await Recipe.findByPk(req.params.id);
 
         if (!recipe) return res.status(404).json({ error: "Recipe not found" });
@@ -223,5 +224,49 @@ router.delete("/:id", authMiddleware, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+/**
+ * @swagger
+ * /api/recipes/search:
+ *   get:
+ *     summary: Search & Filter Recipes
+ *     description: Allows users to search and filter recipes by name, category, cuisine, type, and sort by rating.
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Search by recipe name
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filter by category (e.g., breakfast, lunch)
+ *       - in: query
+ *         name: cuisine
+ *         schema:
+ *           type: string
+ *         description: Filter by cuisine type (e.g., Italian, Indian)
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *         description: Filter by Veg/Non-Veg
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *         description: Sort by field (e.g., rating, createdAt)
+ *       - in: query
+ *         name: order
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort order (asc or desc)
+ *     responses:
+ *       200:
+ *         description: Returns filtered recipes.
+ */
+router.get("/search", searchRecipes);
 
 module.exports = router;

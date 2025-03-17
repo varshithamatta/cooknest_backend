@@ -1,5 +1,6 @@
 const swaggerJsDoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const path = require("path");
 
 const options = {
     definition: {
@@ -11,12 +12,27 @@ const options = {
         },
         servers: [
             {
-                url: "http://localhost:5000",  // Update this if needed
+                url: "http://localhost:5000",  // Local environment
                 description: "Local server"
             }
-        ]
+            // {
+            //     url: "https://your-production-url.com",  // Change this for production
+            //     description: "Production server"
+            // }
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: "http",
+                    scheme: "bearer",
+                    bearerFormat: "JWT",
+                    description: "Enter JWT token in the format: Bearer <your_token>"
+                }
+            }
+        },
+        security: [{ bearerAuth: [] }]  // Apply JWT authentication globally
     },
-    apis: ["./routes/*.js"]  // Path to your route files
+    apis: [path.join(__dirname, "routes/*.js")] // ✅ Fix for Windows & Mac compatibility
 };
 
 const swaggerSpec = swaggerJsDoc(options);

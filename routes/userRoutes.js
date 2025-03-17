@@ -1,82 +1,30 @@
 const express = require("express");
 const router = express.Router();
-const { registerUser, loginUser, getAllUsers, getUserById } = require("../controllers/UserController");
-
-/**
- * @swagger
- * /api/users/register:
- *   post:
- *     summary: Register a new user
- *     description: Creates a new user with name, email, and password.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: "John Doe"
- *               email:
- *                 type: string
- *                 example: "john@example.com"
- *               password:
- *                 type: string
- *                 example: "mypassword123"
- *     responses:
- *       201:
- *         description: User registered successfully.
- *       400:
- *         description: User already exists.
- */
-router.post("/register", registerUser);
-
-/**
- * @swagger
- * /api/users/login:
- *   post:
- *     summary: User login
- *     description: Logs in a user and returns a JWT token.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *                 example: "john@example.com"
- *               password:
- *                 type: string
- *                 example: "mypassword123"
- *     responses:
- *       200:
- *         description: Login successful, returns token.
- *       401:
- *         description: Invalid credentials.
- */
-router.post("/login", loginUser);
+const authMiddleware = require("../middleware/authMiddleware");
+const { getAllUsers, getUserById, updateUser, deleteUser, updateUserProfile } = require("../controllers/UserController");
 
 /**
  * @swagger
  * /api/users:
  *   get:
- *     summary: Get all users
- *     description: Retrieves a list of all registered users.
+ *     summary: Get all users (Protected)
+ *     description: Retrieves a list of all registered users. Only accessible to authorized users.
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: A list of users.
  */
-router.get("/", getAllUsers);
+router.get("/", authMiddleware, getAllUsers);
 
 /**
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Get user by ID
- *     description: Fetches a single user by ID.
+ *     summary: Get user by ID (Protected)
+ *     description: Fetches a user profile by ID. Users can only view their own profile.
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -86,10 +34,110 @@ router.get("/", getAllUsers);
  *         example: 1
  *     responses:
  *       200:
- *         description: User details.
+ *         description: User details retrieved successfully.
+ *       403:
+ *         description: Unauthorized access.
  *       404:
  *         description: User not found.
  */
-router.get("/:id", getUserById);
+router.get("/:id", authMiddleware, getUserById);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   put:
+ *     summary: Update user profile (Protected)
+ *     description: Allows a user to update their profile.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Updated User Name"
+ *               email:
+ *                 type: string
+ *                 example: "updatedemail@example.com"
+ *     responses:
+ *       200:
+ *         description: User profile updated successfully.
+ *       403:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: User not found.
+ */
+router.put("/:id", authMiddleware, updateUser);
+
+/**
+ * @swagger
+ * /api/users/{id}/profile:
+ *   put:
+ *     summary: Update user profile image (Protected)
+ *     description: Allows a user to update their profile image.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               profile_image:
+ *                 type: string
+ *                 example: "https://example.com/profile.jpg"
+ *     responses:
+ *       200:
+ *         description: Profile image updated successfully.
+ *       403:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: User not found.
+ */
+router.put("/:id/profile", authMiddleware, updateUserProfile);
+
+/**
+ * @swagger
+ * /api/users/{id}:
+ *   delete:
+ *     summary: Delete user account (Protected)
+ *     description: Allows a user to delete their account.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: User deleted successfully.
+ *       403:
+ *         description: Unauthorized access.
+ *       404:
+ *         description: User not found.
+ */
+router.delete("/:id", authMiddleware, deleteUser);
 
 module.exports = router;
